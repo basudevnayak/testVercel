@@ -1,41 +1,12 @@
-import express from "express";
-import mongoose from "mongoose";
-import cors from "cors";
-import dotenv from "dotenv";
-import serverless from "serverless-http";
-
-dotenv.config();
-
+const express = require("express");
 const app = express();
 
-// MongoDB connection
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.DATABASE_URL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
-    console.log("MongoDB connected");
-  } catch (err) {
-    console.error("MongoDB error", err);
-  }
-};
+const port = process.env.PORT || 8080;
 
-await connectDB(); // connect outside of handler
-
-// Middleware
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
-app.use(express.json());
-
-// Routes
 app.get("/", (req, res) => {
-  res.send("Hello from Vercel with serverless HTTP!");
+  res.send("Subscribe to Arpan Neupane's channel basudev");
 });
 
-// ⛔ DO NOT call app.listen()
-// ✅ EXPORT handler for Vercel
-export const handler = serverless(app);
+app.listen(port, () => {
+  `Server started on port ${port}`;
+});
