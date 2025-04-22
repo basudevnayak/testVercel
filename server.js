@@ -1,84 +1,62 @@
-import express from 'express';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import cors from 'cors';
-dotenv.config();
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
-const app = express();
-app.use(express.json());
-app.use(cors());
+// Connection caching
+let cached = global.mongoose;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
-// Mongoose schema and model
-const productSchema = new mongoose.Schema({
-  name: String,
-  price: Number,
-  description: String,
-});
-
-const Product = mongoose.model('Product', productSchema);
-
-// Create - POST /products
-app.post('/api/products', async (req, res) => {
-  try {
-    const product = new Product(req.body);
-    const saved = await product.save();
-    res.status(201).json(saved);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+async function connectDB() {
+  if (cached.conn) return cached.conn;
+  
+  if (!process.env.MONGODB_URI) {
+    throw new Error('MONGODB_URI not set');
   }
-});
 
-// Read all - GET /products
-app.get('/api/products', async (req, res) => {
+  cached.promise ||= mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    bufferCommands: false,       // Disable buffering
+    serverSelectionTimeoutMS: 3000, // 3s timeout
+    socketTimeoutMS: 45000       // 45s socket timeout
+  });
+
   try {
-    const products = await Product.find();
-    res.json(products);
+    cached.conn = await cached.promise;
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    cached.promise = null;
+    throw err;
   }
-});
 
-// Read one - GET /products/:id
-app.get('/api/products/:id', async (req, res) => {
+  return cached.conn;
+}
+
+// Optimized handler
+export default async function handler(req, res) {
   try {
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ error: 'Not found' });
-    res.json(product);
+    const db = await Promise.race([
+      connectDB(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject('Connection timeout'), 2500)
+      )
+    ]);
+
+    const items = await db.model('Item')
+      .find()
+      .select('_id name')        // Only return needed fields
+      .limit(50)                 // Limit results
+      .lean()                    // Faster JSON conversion
+      .maxTimeMS(3000);          // Query timeout
+
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
+    return res.status(200).json(items);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error:', err);
+    return res.status(500).json({ 
+      error: err.message || 'Request timed out',
+      code: 'TIMEOUT_ERROR'
+    });
   }
-});
-
-// Update - PUT /products/:id
-app.put('/api/products/:id', async (req, res) => {
-  try {
-    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ error: 'Not found' });
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// Delete - DELETE /products/:id
-app.delete('/api/products/:id', async (req, res) => {
-  try {
-    const deleted = await Product.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ error: 'Not found' });
-    res.json({ message: 'Product deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Connect to MongoDB and start server
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  console.log('✅ MongoDB connected');
-})
-.catch((err) => console.error('MongoDB connection error:', err));
-
-export default app; // Vercel uses this for serverless functions
+}
