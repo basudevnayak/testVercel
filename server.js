@@ -1,83 +1,100 @@
+// server.js
 import express from 'express';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import cors from 'cors';
 
 const app = express();
+const router = express.Router();
+
+// Middleware
+app.use(cors());
 app.use(express.json());
 
-// Mongoose schema and model
-const productSchema = new mongoose.Schema({
+// MongoDB Connection
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('MongoDB connected');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+  }
+};
+
+// Schema and Model
+const itemSchema = new mongoose.Schema({
   name: String,
-  price: Number,
-  description: String,
-});
+}, { timestamps: true });
 
-const Product = mongoose.model('Product', productSchema);
+const Item = mongoose.model('Item', itemSchema);
 
-// Create - POST /products
-app.post('/api/products', async (req, res) => {
+// Routes
+router.post('/items', async (req, res) => {
   try {
-    const product = new Product(req.body);
-    const saved = await product.save();
-    res.status(201).json(saved);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+    const newItem = new Item({ name: req.body.name });
+    const savedItem = await newItem.save();
+    res.status(201).json(savedItem);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 });
 
-// Read all - GET /products
-app.get('/api/products', async (req, res) => {
+router.get('/items', async (req, res) => {
   try {
-    const products = await Product.find();
-    res.json(products);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const items = await Item.find();
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
-// Read one - GET /products/:id
-app.get('/api/products/:id', async (req, res) => {
+router.get('/items/:id', async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ error: 'Not found' });
-    res.json(product);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: 'Item not found' });
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
-// Update - PUT /products/:id
-app.put('/api/products/:id', async (req, res) => {
+router.put('/items/:id', async (req, res) => {
   try {
-    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ error: 'Not found' });
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+    const updatedItem = await Item.findByIdAndUpdate(
+      req.params.id,
+      { name: req.body.name },
+      { new: true }
+    );
+    if (!updatedItem) return res.status(404).json({ message: 'Item not found' });
+    res.json(updatedItem);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 });
 
-// Delete - DELETE /products/:id
-app.delete('/api/products/:id', async (req, res) => {
+router.delete('/items/:id', async (req, res) => {
   try {
-    const deleted = await Product.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ error: 'Not found' });
-    res.json({ message: 'Product deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const deletedItem = await Item.findByIdAndDelete(req.params.id);
+    if (!deletedItem) return res.status(404).json({ message: 'Item not found' });
+    res.json({ message: 'Item deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
-// Connect to MongoDB and start server
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  console.log('✅ MongoDB connected');
-})
-.catch((err) => console.error('MongoDB connection error:', err));
+app.use('/api', router);
 
-export default app; // Vercel uses this for serverless functions
+// Vercel serverless function handler
+const handler = app;
+
+// Connect to MongoDB before handling requests
+const startServer = async () => {
+  await connectDB();
+  console.log('Database connected and server ready');
+};
+
+startServer();
+
+export default handler;
