@@ -1,4 +1,4 @@
-import { User, RefreshToken } from "../../models/index.js";
+import { User, RefreshToken,Departments } from "../../models/index.js";
 import generateToken from "../../utils/generateToken.js";
 import { REFRESH_SECRET } from "../../config/index.js";
 import JwtService from "../../utils/JwtService.js";
@@ -32,14 +32,68 @@ const AuthController = {
   },
   async aaa(req, res, next) {
     try {
-      res.status(200).json({
-        message: 'Users fetched successfully',
-        status: 200,
-        data: "users",
-      });
-    } catch (err) {
-      return next(err);
-    }
+      const {
+          page = 1,
+          limit = 10,
+          query = '',
+          sortKey = '_id',
+          sortOrder = 'desc',
+          purchaseChannel = []
+      } = {
+          page: req.query.page || req.query.pageIndex || 1,
+          limit: req.query.limit || req.query.pageSize || 10,
+          query: req.query.query || '',
+          sortKey: req.query['sort[key]'] || '_id',
+          sortOrder: req.query['sort[order]'] || 'desc',
+          purchaseChannel: req.query.purchaseChannel || []
+      }
+
+      const pageNum = Number(page)
+      const limitNum = Number(limit)
+      const skip = (pageNum - 1) * limitNum
+
+      const filter = {
+          ...(query ? { DepartmentName: { $regex: query, $options: 'i' } } : {}),
+          ...(Array.isArray(purchaseChannel) && purchaseChannel.length > 0
+              ? { PurchaseChannel: { $in: purchaseChannel } }
+              : {})
+      }
+
+      const sort = { [sortKey]: sortOrder === 'asc' ? 1 : -1 }
+
+      const [documents, total] = await Promise.all([
+          Departments.find(filter)
+              .select('-__v -updatedAt')
+              .sort(sort)
+              .skip(skip)
+              .limit(limitNum),
+          Departments.countDocuments(filter)
+      ])
+
+      const list = documents.map((_data) => ({
+          name: _data.DepartmentName,
+          remark: _data.Remarks,
+          id: _data._id,
+          ..._data._doc,
+          ..._data
+      }))
+
+      return res.status(200).json({
+          status: 200,
+          success: true,
+          message: 'Departments fetched successfully',
+          list,
+          total,
+          meta: {
+              total,
+              page: pageNum,
+              limit: limitNum,
+              totalPages: Math.ceil(total / limitNum)
+          }
+      })
+  } catch (err) {
+      return next(CustomErrorHandler.serverError(err.message))
+  }
   },
 
   async register(req, res, next) {
