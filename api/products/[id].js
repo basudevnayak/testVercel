@@ -1,6 +1,6 @@
 // api/products/[id].js
-import { connectToDatabase } from '../../lib/db';
-import Product from '../../lib/Product';
+import { connectToDatabase } from '../../lib/db.js';
+import Product from '../../lib/Product.js';
 
 export default async function handler(req, res) {
   const { id } = req.query;

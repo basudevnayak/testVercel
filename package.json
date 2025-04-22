@@ -1,4 +1,5 @@
 {
+    "type": "module",
     "dependencies": {
         "colors": "^1.4.0",
         "cors": "^2.8.5",
@@ -8,7 +9,7 @@
         "morgan": "^1.10.0"
     },
     "scripts": {
-"dev": "vercel dev",
+        "dev": "nodemon server.js",
         "start": "node server.js"
     },
     "devDependencies": {
