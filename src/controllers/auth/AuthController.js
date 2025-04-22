@@ -30,6 +30,17 @@ const AuthController = {
       return next(err);
     }
   },
+  async aaa(req, res, next) {
+    try {
+      res.status(200).json({
+        message: 'Users fetched successfully',
+        status: 200,
+        data: "users",
+      });
+    } catch (err) {
+      return next(err);
+    }
+  },
 
   async register(req, res, next) {
     const registerSchema = Joi.object({
