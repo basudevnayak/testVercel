@@ -1,10 +1,9 @@
-// server.js
+import 'dotenv/config'; // Add this at the top
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 
 const app = express();
-const router = express.Router();
 
 // Middleware
 app.use(cors());
@@ -13,17 +12,21 @@ app.use(express.json());
 // MongoDB Connection
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
+    const connectionString = process.env.MONGODB_URI || 'mongodb://localhost:27017/crudDB';
+    console.log('Connecting to MongoDB with URI:', connectionString); // Debug log
+    
+    await mongoose.connect(connectionString, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('MongoDB connected');
+    console.log('MongoDB connected successfully');
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('MongoDB connection failed:', error.message);
+    process.exit(1); // Exit process on connection failure
   }
 };
 
-// Schema and Model
+// ... rest of your routes and schema code ...
 const itemSchema = new mongoose.Schema({
   name: String,
 }, { timestamps: true });
@@ -31,7 +34,7 @@ const itemSchema = new mongoose.Schema({
 const Item = mongoose.model('Item', itemSchema);
 
 // Routes
-router.post('/items', async (req, res) => {
+app.post('/api/items', async (req, res) => {
   try {
     const newItem = new Item({ name: req.body.name });
     const savedItem = await newItem.save();
@@ -41,7 +44,7 @@ router.post('/items', async (req, res) => {
   }
 });
 
-router.get('/items', async (req, res) => {
+app.get('/api/items', async (req, res) => {
   try {
     const items = await Item.find();
     res.json(items);
@@ -50,51 +53,18 @@ router.get('/items', async (req, res) => {
   }
 });
 
-router.get('/items/:id', async (req, res) => {
-  try {
-    const item = await Item.findById(req.params.id);
-    if (!item) return res.status(404).json({ message: 'Item not found' });
-    res.json(item);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+// Add other routes (GET by ID, PUT, DELETE) here...
 
-router.put('/items/:id', async (req, res) => {
-  try {
-    const updatedItem = await Item.findByIdAndUpdate(
-      req.params.id,
-      { name: req.body.name },
-      { new: true }
-    );
-    if (!updatedItem) return res.status(404).json({ message: 'Item not found' });
-    res.json(updatedItem);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-router.delete('/items/:id', async (req, res) => {
-  try {
-    const deletedItem = await Item.findByIdAndDelete(req.params.id);
-    if (!deletedItem) return res.status(404).json({ message: 'Item not found' });
-    res.json({ message: 'Item deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-app.use('/api', router);
-
-// Vercel serverless function handler
-const handler = app;
-
-// Connect to MongoDB before handling requests
-const startServer = async () => {
+// Vercel handler
+// Start server and DB connection
+const start = async () => {
   await connectDB();
-  console.log('Database connected and server ready');
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
 };
 
-startServer();
+start();
 
-export default handler;
+export default app;
