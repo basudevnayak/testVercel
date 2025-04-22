@@ -17,7 +17,7 @@ const productSchema = new mongoose.Schema({
 const Product = mongoose.model('Product', productSchema);
 
 // Create - POST /products
-app.post('/products', async (req, res) => {
+app.post('/api/products', async (req, res) => {
   try {
     const product = new Product(req.body);
     const saved = await product.save();
@@ -28,7 +28,7 @@ app.post('/products', async (req, res) => {
 });
 
 // Read all - GET /products
-app.get('/products', async (req, res) => {
+app.get('/api/products', async (req, res) => {
   try {
     const products = await Product.find();
     res.json(products);
@@ -38,7 +38,7 @@ app.get('/products', async (req, res) => {
 });
 
 // Read one - GET /products/:id
-app.get('/products/:id', async (req, res) => {
+app.get('/api/products/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: 'Not found' });
@@ -49,7 +49,7 @@ app.get('/products/:id', async (req, res) => {
 });
 
 // Update - PUT /products/:id
-app.put('/products/:id', async (req, res) => {
+app.put('/api/products/:id', async (req, res) => {
   try {
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updated) return res.status(404).json({ error: 'Not found' });
@@ -60,7 +60,7 @@ app.put('/products/:id', async (req, res) => {
 });
 
 // Delete - DELETE /products/:id
-app.delete('/products/:id', async (req, res) => {
+app.delete('/api/products/:id', async (req, res) => {
   try {
     const deleted = await Product.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'Not found' });
@@ -77,8 +77,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
 .then(() => {
   console.log('✅ MongoDB connected');
-  app.listen(process.env.PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${process.env.PORT}`);
-  });
 })
 .catch((err) => console.error('MongoDB connection error:', err));
+
+export default app; // Vercel uses this for serverless functions
