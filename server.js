@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+import serverless from "serverless-http";
 
 dotenv.config();
 
@@ -10,44 +11,31 @@ const app = express();
 // MongoDB connection
 const connectDB = async () => {
   try {
-    const connection = await mongoose.connect(process.env.DATABASE_URL, {
+    await mongoose.connect(process.env.DATABASE_URL, {
       useNewUrlParser: true,
-      useUnifiedTopology: true,
+      useUnifiedTopology: true
     });
-    console.log("MongoDB connected:", connection.connection.host);
+    console.log("MongoDB connected");
   } catch (err) {
-    console.error("MongoDB connection error:", err);
-    process.exit(1); // Exit the process with failure
+    console.error("MongoDB error", err);
   }
 };
 
-// CORS configuration
+await connectDB(); // connect outside of handler
+
+// Middleware
 app.use(cors({
-  origin: "https://hotel-backend-xi.vercel.app", // Your frontend URL
-  methods: ["POST", "GET", "DELETE", "PUT"],
-  credentials: true,
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
 }));
+app.use(express.json());
 
-app.use(express.json({ limit: "25mb" }));
-
-// Test Route
-app.get('/', (req, res) => {
-  res.send("Hello hotel");
-  console.log("Hello hotel");
+// Routes
+app.get("/", (req, res) => {
+  res.send("Hello from Vercel with serverless HTTP!");
 });
 
-// Start server function
-const startServer = async () => {
-  try {
-    // Connect to MongoDB before starting the server
-    await connectDB();
-
-    app.listen(5000, () => {
-      console.log("Server listening on http://localhost:5000");
-    });
-  } catch (err) {
-    console.log("Error in starting the server:", err);
-  }
-};
-
-startServer();
+// ⛔ DO NOT call app.listen()
+// ✅ EXPORT handler for Vercel
+export const handler = serverless(app);
