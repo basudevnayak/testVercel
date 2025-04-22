@@ -1,5 +1,6 @@
 import express from "express";
-import {DATABASE_URL} from "./src/config/index.js"
+import {DATABASE_URL} from "./src/config/index.js";
+import {connect} from "./src/config/connect.js"
 const app = express();
 
 
