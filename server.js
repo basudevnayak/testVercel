@@ -2,6 +2,7 @@ import express from "express";
 import {DATABASE_URL} from "./src/config/index.js";
 import {connect} from "./src/config/connect.js";
 import cors from 'cors';
+import {authRoutes} from "./src/routes/index.js"
 const app = express();
 app.use(cors());
 
@@ -22,7 +23,9 @@ const start = async () => {
 
 start();
 const port = process.env.PORT || 8080;
-
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+app.use('/api', authRoutes);
 app.get("/", (req, res) => {
   res.send("Subscribe to Arpan Neupane's channel ssssssssss");
 });
